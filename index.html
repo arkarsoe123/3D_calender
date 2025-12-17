@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Lottery Analyzer</title>
+    <title>Lottery Analyzer - Hybrid Storage</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- React & Babel for Browser -->
@@ -13,12 +13,12 @@
     <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
     <style>
-        body { background-color: #020617; color: #e2e8f0; font-family: sans-serif; }
+        body { background-color: #020617; color: #e2e8f0; font-family: sans-serif; overflow-x: hidden; }
         .scale-in-center { animation: scale-in-center 0.2s cubic-bezier(0.250, 0.460, 0.450, 0.940) both; }
         @keyframes scale-in-center { 0% { transform: scale(0.9); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
-        /* Hide scrollbar for Chrome, Safari and Opera */
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .sticky-col { position: sticky; left: 0; z-index: 10; background: #0f172a; border-right: 1px solid #334155; }
+        input[type="text"] { caret-color: #3b82f6; }
     </style>
 </head>
 <body class="select-none">
@@ -27,6 +27,8 @@
     <script type="text/babel">
         const { useState, useEffect, useMemo } = React;
         const API_URL = 'https://sheetdb.io/api/v1/x9azbgwzmy3a7';
+        const STORAGE_KEY = 'lottery_analyzer_data_v2';
+        const CORRECT_PASSWORD = "arkarsoe";
 
         const App = () => {
             const [data, setData] = useState([]);
@@ -38,28 +40,45 @@
             
             const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
             const [showPasswordInput, setShowPasswordInput] = useState(false);
+            const [passwordAction, setPasswordAction] = useState(null);
             const [password, setPassword] = useState("");
             const [authError, setAuthError] = useState("");
 
             useEffect(() => {
-                fetchData();
+                initializeData();
             }, []);
 
-            const fetchData = async () => {
+            const initializeData = async () => {
                 try {
-                    const response = await fetch(API_URL);
-                    const json = await response.json();
-                    setData(json);
+                    const localSavedData = localStorage.getItem(STORAGE_KEY);
+                    if (localSavedData && JSON.parse(localSavedData).length > 0) {
+                        setData(JSON.parse(localSavedData));
+                    } else {
+                        const response = await fetch(API_URL);
+                        const sheetJson = await response.json();
+                        const processedData = sheetJson.map(item => ({
+                            ...item,
+                            number: item.number !== null && item.number !== undefined ? String(item.number) : ""
+                        }));
+                        setData(processedData);
+                        localStorage.setItem(STORAGE_KEY, JSON.stringify(processedData));
+                    }
                 } catch (err) {
-                    console.error("Fetch Error:", err);
+                    console.error("Initialization Error:", err);
                 } finally {
                     setLoading(false);
                 }
             };
 
+            const syncStorage = (newData) => {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(newData));
+                setData(newData);
+            };
+
             const { organizedData, years } = useMemo(() => {
                 const yearsMap = {};
                 data.forEach((item) => {
+                    if (!item.date) return;
                     const date = new Date(item.date);
                     const year = date.getFullYear();
                     if (!yearsMap[year]) yearsMap[year] = Array(24).fill(null);
@@ -74,12 +93,15 @@
                 });
 
                 let sortedYears = Object.keys(yearsMap).sort((a, b) => a - b).map(Number);
-                const lastYear = sortedYears.length > 0 ? sortedYears[sortedYears.length - 1] : new Date().getFullYear();
+                const currentYear = new Date().getFullYear();
+                if (sortedYears.length === 0) sortedYears = [currentYear];
+                
+                const lastYear = sortedYears[sortedYears.length - 1];
                 const nextYear = lastYear + 1;
                 
                 if (!yearsMap[nextYear]) {
                     yearsMap[nextYear] = Array(24).fill(null);
-                    sortedYears.push(nextYear); 
+                    if (!sortedYears.includes(nextYear)) sortedYears.push(nextYear); 
                 }
                 return { organizedData: yearsMap, years: sortedYears };
             }, [data]);
@@ -89,22 +111,46 @@
                 setInputVal(currentNum || "");
             };
 
-            const handleSaveData = () => {
-                if (!activeCell) return;
+            const handleAuthSubmit = () => {
+                if (password === CORRECT_PASSWORD) {
+                    if (passwordAction === 'save') {
+                        executeSave();
+                    } else if (passwordAction === 'clear') {
+                        executeClearAll();
+                    }
+                    setPassword("");
+                    setAuthError("");
+                    setShowPasswordInput(false);
+                } else {
+                    setAuthError("Password မှားယွင်းနေပါသည်။");
+                }
+            };
+
+            const executeSave = () => {
                 const newData = [...data];
                 const month = Math.floor(activeCell.round / 2);
                 const day = (activeCell.round % 2 === 0) ? 1 : 16;
                 const dateStr = `${activeCell.year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
                 
                 const existingIdx = newData.findIndex(d => d.date === dateStr);
+                const finalNum = String(inputVal);
+
                 if (existingIdx > -1) {
-                    newData[existingIdx].number = inputVal;
+                    newData[existingIdx].number = finalNum;
                 } else {
-                    newData.push({ date: dateStr, number: inputVal });
+                    newData.push({ date: dateStr, number: finalNum });
                 }
                 
-                setData(newData);
+                syncStorage(newData);
                 setActiveCell(null);
+            };
+
+            const executeClearAll = () => {
+                syncStorage([]);
+                setCellStyles({});
+                setSelectedCells([]);
+                setShowDeleteConfirm(false);
+                window.location.reload();
             };
 
             const applyColor = (color) => {
@@ -124,64 +170,59 @@
                 setActiveCell(null);
             };
 
-            const handleFinalClear = () => {
-                if (password === "arkarsoe") {
-                    setCellStyles({});
-                    setSelectedCells([]);
-                    setPassword("");
-                    setAuthError("");
-                    setShowPasswordInput(false);
-                } else {
-                    setAuthError("Password မှားယွင်းနေပါသည်။");
-                }
-            };
-
             if (loading) return (
-                <div className="flex items-center justify-center h-screen bg-slate-950 text-white">
-                    <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-blue-500"></div>
+                <div className="flex flex-col items-center justify-center h-screen bg-slate-950 text-white">
+                    <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-blue-500 mb-4"></div>
+                    <p className="text-slate-400 text-sm animate-pulse">Data များကို ရယူနေပါသည်...</p>
                 </div>
             );
 
             return (
                 <div className="min-h-screen p-2 md:p-4 text-slate-200">
+                    {/* Header Section */}
                     <div className="sticky top-0 z-30 bg-slate-900/90 backdrop-blur-md border border-slate-700 rounded-2xl p-4 mb-4 shadow-xl">
                         <div className="flex justify-between items-center mb-3">
-                            <h1 className="text-xl font-bold text-blue-400 flex items-center gap-2">
-                                <i data-lucide="calendar"></i> Lottery Analyzer
-                            </h1>
+                            <div className="flex flex-col">
+                                <h1 className="text-xl font-bold text-blue-400 flex items-center gap-2">
+                                    <i data-lucide="shield-check" className="w-5 h-5"></i> အာကာစိုး
+                                </h1>
+                                <p className="text-[10px] text-slate-400 font-medium ml-7">တွက်နည်းတစ်ထောင်တတ်တတ်ပြောင်</p>
+                            </div>
                             <button 
                                 onClick={() => setShowDeleteConfirm(true)}
-                                className="p-2 hover:bg-red-500/20 text-red-400 rounded-lg transition-colors flex items-center gap-2 text-xs border border-red-500/30"
+                                className="p-2 hover:bg-red-500/20 text-red-400 rounded-lg transition-colors flex items-center gap-2 text-xs border border-red-500/30 h-fit"
                             >
-                                <i data-lucide="trash-2" style={{width: 16}}></i> အားလုံးဖျက်မည်
+                                <i data-lucide="rotate-ccw" className="w-4 h-4"></i> Reset
                             </button>
                         </div>
 
-                        <div className="flex flex-wrap gap-2 min-h-[50px] p-2 bg-slate-800/40 rounded-xl border border-slate-700/50 overflow-x-auto no-scrollbar">
+                        {/* Analysis Tray */}
+                        <div className="flex flex-wrap gap-2 min-h-[45px] p-2 bg-slate-800/40 rounded-xl border border-slate-700/50 overflow-x-auto no-scrollbar">
                             {selectedCells.length === 0 ? (
-                                <p className="text-slate-500 text-xs italic m-auto">အကွက်ကိုနှိပ်၍ မှတ်သားချက်များထည့်ပါ...</p>
+                                <p className="text-slate-500 text-[10px] italic m-auto">အကွက်များကိုနှိပ်၍ ခွဲခြမ်းစိတ်ဖြာနိုင်ပါသည်</p>
                             ) : (
                                 selectedCells.map((cell) => (
                                     <div 
                                         key={cell.id} 
-                                        className="flex items-center gap-2 px-3 py-1 rounded-full text-[10px] font-bold shadow-md border border-white/10 shrink-0"
+                                        className="flex items-center gap-2 px-3 py-1 rounded-full text-[10px] font-bold shadow-md border border-white/10 shrink-0 scale-in-center"
                                         style={{ backgroundColor: cell.color, color: '#fff' }}
                                     >
-                                        <span>{cell.year} ({cell.round}) - {cell.number}</span>
-                                        <button onClick={() => setSelectedCells(prev => prev.filter(c => c.id !== cell.id))} className="hover:text-black">×</button>
+                                        <span>{cell.year} ({cell.round}) : {cell.number}</span>
+                                        <button onClick={() => setSelectedCells(prev => prev.filter(c => c.id !== cell.id))} className="ml-1 opacity-70 hover:opacity-100">×</button>
                                     </div>
                                 ))
                             )}
                         </div>
                     </div>
 
-                    <div className="overflow-auto rounded-2xl border border-slate-800 bg-slate-900 shadow-2xl max-h-[75vh]">
-                        <table className="w-full text-center border-collapse text-[11px] md:text-sm">
+                    {/* Table Section */}
+                    <div className="overflow-auto rounded-2xl border border-slate-800 bg-slate-900 shadow-2xl max-h-[72vh]">
+                        <table className="w-full text-center border-collapse text-[12px] md:text-sm">
                             <thead>
                                 <tr className="bg-slate-800 text-slate-400 sticky top-0 z-20">
-                                    <th className="p-3 border border-slate-700 bg-slate-800 sticky left-0 z-30 min-w-[80px]">အကြိမ်ရေ</th>
+                                    <th className="p-3 border border-slate-700 bg-slate-800 sticky left-0 z-30 min-w-[70px] shadow-[2px_0_5px_rgba(0,0,0,0.3)]">အကြိမ်</th>
                                     {years.map(year => (
-                                        <th key={year} className="p-3 border border-slate-700 min-w-[70px] text-blue-300 font-bold bg-slate-800">
+                                        <th key={year} className="p-3 border border-slate-700 min-w-[75px] text-blue-300 font-bold bg-slate-800">
                                             {year}
                                         </th>
                                     ))}
@@ -189,21 +230,21 @@
                             </thead>
                             <tbody>
                                 {Array.from({ length: 24 }).map((_, roundIdx) => (
-                                    <tr key={roundIdx} className="hover:bg-slate-800/30">
-                                        <td className="p-2 border border-slate-700 font-medium text-slate-400 bg-slate-900 sticky left-0 z-10">
+                                    <tr key={roundIdx} className="hover:bg-slate-800/30 transition-colors">
+                                        <td className="p-2 border border-slate-700 font-medium text-slate-400 bg-slate-900 sticky left-0 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.2)]">
                                             <span className="text-xs">{roundIdx + 1}</span>
-                                            <div className="text-[8px] opacity-40">({roundIdx % 2 === 0 ? '၁' : '၁၆'} ရက်)</div>
+                                            <div className="text-[9px] opacity-40 font-light">{roundIdx % 2 === 0 ? '၁ ရက်' : '၁၆ ရက်'}</div>
                                         </td>
                                         {years.map(year => {
-                                            const num = organizedData[year][roundIdx];
+                                            const num = organizedData[year] ? organizedData[year][roundIdx] : null;
                                             const cellId = `${year}-${roundIdx}`;
                                             const bgColor = cellStyles[cellId];
                                             return (
                                                 <td
                                                     key={year}
                                                     onClick={() => handleCellClick(year, roundIdx, num)}
-                                                    className={`p-2 border border-slate-700 cursor-pointer transition-all relative
-                                                        ${!num ? 'bg-slate-950/40 text-slate-700 italic' : 'text-white'}
+                                                    className={`p-2 border border-slate-700 cursor-pointer transition-all relative active:scale-95
+                                                        ${!num ? 'bg-slate-950/40 text-slate-700 italic' : 'text-white font-medium'}
                                                     `}
                                                     style={{ backgroundColor: bgColor }}
                                                 >
@@ -217,30 +258,44 @@
                         </table>
                     </div>
 
-                    {/* Modals are handled below */}
+                    {/* Footer Info */}
+                    <div className="mt-4 text-center">
+                         <p className="text-slate-600 text-[10px]">Hybrid Data Management System Loaded.</p>
+                    </div>
+
+                    {/* Modals */}
                     {showDeleteConfirm && (
-                        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/90 backdrop-blur-md">
+                        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/95 backdrop-blur-md">
                             <div className="bg-slate-900 border border-red-500/30 rounded-3xl p-8 w-full max-w-sm text-center shadow-2xl scale-in-center">
-                                <h2 className="text-xl font-bold text-white mb-2">ဖျက်ရန် သေချာပါသလား?</h2>
-                                <p className="text-slate-400 mb-6 text-sm">မှတ်သားထားသော data အားလုံး ပျောက်သွားပါမည်။</p>
+                                <div className="w-16 h-16 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                                    <i data-lucide="alert-triangle" className="text-red-500 w-8 h-8"></i>
+                                </div>
+                                <h2 className="text-xl font-bold text-white mb-2">Reset လုပ်မည်</h2>
+                                <p className="text-slate-400 mb-6 text-sm">မှတ်သားထားသော data အားလုံးကို ဖျက်ပြီး မူလအခြေအနေသို့ ပြန်သွားပါမည်။</p>
                                 <div className="flex gap-3">
-                                    <button onClick={() => setShowDeleteConfirm(false)} className="flex-1 py-3 bg-slate-800 rounded-xl">မလုပ်တော့ပါ</button>
-                                    <button onClick={() => {setShowDeleteConfirm(false); setShowPasswordInput(true);}} className="flex-1 py-3 bg-red-600 text-white rounded-xl font-bold">သေချာသည်</button>
+                                    <button onClick={() => setShowDeleteConfirm(false)} className="flex-1 py-3 bg-slate-800 rounded-xl hover:bg-slate-700 transition-colors">ပယ်ဖျက်မည်</button>
+                                    <button onClick={() => { setPasswordAction('clear'); setShowPasswordInput(true); }} className="flex-1 py-3 bg-red-600 text-white rounded-xl font-bold shadow-lg shadow-red-600/20">ဆက်လုပ်မည်</button>
                                 </div>
                             </div>
                         </div>
                     )}
 
                     {showPasswordInput && (
-                        <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/90 backdrop-blur-md">
-                            <div className="bg-slate-900 border border-blue-500/30 rounded-3xl p-8 w-full max-w-sm shadow-2xl">
+                        <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/95 backdrop-blur-md">
+                            <div className="bg-slate-900 border border-blue-500/30 rounded-3xl p-8 w-full max-w-sm shadow-2xl scale-in-center text-center">
                                 <h3 className="text-lg font-bold text-white mb-4">Password အတည်ပြုပါ</h3>
-                                <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Password" 
-                                    className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white mb-2" />
-                                {authError && <p className="text-red-500 text-xs mb-4">{authError}</p>}
+                                <input 
+                                    type="password" 
+                                    autoFocus
+                                    value={password} 
+                                    onChange={(e) => setPassword(e.target.value)} 
+                                    placeholder="Password ရိုက်ထည့်ပါ" 
+                                    className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white mb-2 focus:border-blue-500 outline-none text-center tracking-widest" 
+                                />
+                                {authError && <p className="text-red-500 text-xs mb-4 animate-bounce">{authError}</p>}
                                 <div className="flex gap-3">
                                     <button onClick={() => setShowPasswordInput(false)} className="flex-1 py-3 bg-slate-800 rounded-xl">ပိတ်မည်</button>
-                                    <button onClick={handleFinalClear} className="flex-1 py-3 bg-blue-600 text-white rounded-xl font-bold">Confirm</button>
+                                    <button onClick={handleAuthSubmit} className="flex-1 py-3 bg-blue-600 text-white rounded-xl font-bold">အတည်ပြုသည်</button>
                                 </div>
                             </div>
                         </div>
@@ -252,18 +307,42 @@
                                 <div className="flex justify-between items-center mb-6">
                                     <div>
                                         <h3 className="text-xl font-bold text-white">{activeCell.year} ခုနှစ်</h3>
-                                        <p className="text-slate-400 text-xs">အကြိမ်ရေ ({activeCell.round + 1})</p>
+                                        <p className="text-slate-400 text-[10px] uppercase tracking-wider font-bold">အကြိမ်ရေ ({activeCell.round + 1})</p>
                                     </div>
-                                    <button onClick={() => setActiveCell(null)} className="p-2 bg-slate-700 rounded-full">×</button>
+                                    <button onClick={() => setActiveCell(null)} className="p-2 bg-slate-700/50 hover:bg-slate-700 rounded-full transition-colors text-slate-300">×</button>
                                 </div>
-                                <div className="mb-6 flex gap-2">
-                                    <input type="text" value={inputVal} onChange={(e) => setInputVal(e.target.value)} className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white text-lg" />
-                                    <button onClick={handleSaveData} className="bg-blue-600 px-4 rounded-xl">Save</button>
+                                <div className="mb-6">
+                                    <label className="text-[10px] text-slate-500 block mb-1 ml-1 font-bold">ထွက်ဂဏန်း ပြင်ဆင်ရန်</label>
+                                    <div className="flex gap-2">
+                                        <input 
+                                            type="text" 
+                                            autoFocus
+                                            value={inputVal} 
+                                            onChange={(e) => setInputVal(e.target.value)} 
+                                            className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white text-lg font-mono focus:border-blue-500 outline-none" 
+                                            placeholder="--"
+                                        />
+                                        <button 
+                                            onClick={() => { setPasswordAction('save'); setShowPasswordInput(true); }} 
+                                            className="bg-blue-600 hover:bg-blue-500 px-6 rounded-xl text-sm font-bold shadow-lg shadow-blue-600/20 transition-all"
+                                        >
+                                            Save
+                                        </button>
+                                    </div>
                                 </div>
-                                <div className="grid grid-cols-4 gap-2">
-                                    {['#ef4444', '#22c55e', '#3b82f6', '#eab308', '#a855f7', '#ec4899', '#f97316', '#64748b'].map(color => (
-                                        <button key={color} onClick={() => applyColor(color)} className="h-10 rounded-lg" style={{ backgroundColor: color }} />
-                                    ))}
+                                
+                                <div className="mb-2">
+                                     <label className="text-[10px] text-slate-500 block mb-2 ml-1 font-bold">အရောင်ဖြင့် မှတ်သားရန်</label>
+                                     <div className="grid grid-cols-4 gap-2">
+                                        {['#ef4444', '#22c55e', '#3b82f6', '#eab308', '#a855f7', '#ec4899', '#f97316', '#64748b'].map(color => (
+                                            <button 
+                                                key={color} 
+                                                onClick={() => applyColor(color)} 
+                                                className="h-10 rounded-lg shadow-inner active:scale-90 transition-transform" 
+                                                style={{ backgroundColor: color }} 
+                                            />
+                                        ))}
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -274,8 +353,6 @@
 
         const root = ReactDOM.createRoot(document.getElementById('root'));
         root.render(<App />);
-
-        // Refresh icons after render
         setTimeout(() => lucide.createIcons(), 500);
     </script>
 </body>
