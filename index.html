@@ -36,8 +36,8 @@
         }
 
         th, td {
-            min-width: 65px;
-            height: 48px;
+            min-width: 65px; 
+            height: 48px;     
             border: 0.5px solid #e2e8f0;
             text-align: center;
             font-size: 14px;
@@ -142,6 +142,19 @@
 
         .color-btn:active { transform: scale(0.85); }
         .no-scrollbar::-webkit-scrollbar { display: none; }
+
+        /* Loading Spinner Animation */
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid rgba(37, 99, 235, 0.1);
+            border-left-color: #2563eb;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
     </style>
 </head>
 <body class="bg-slate-50 text-slate-900 transition-colors duration-300">
@@ -171,6 +184,7 @@
 
         const App = () => {
             const [data, setData] = useState([]);
+            const [loading, setLoading] = useState(true);
             const [selected, setSelected] = useState([]);
             const [editCell, setEditCell] = useState(null);
             const [styles, setStyles] = useState({});
@@ -181,6 +195,7 @@
             
             const tableRef = useRef(null);
             const wrapperRef = useRef(null);
+            const pressTimer = useRef(null);
 
             useEffect(() => {
                 const load = async () => {
@@ -199,6 +214,9 @@
                         }
                     } catch (e) {
                         console.error("Fetch error:", e);
+                    } finally {
+                        // ဒေတာ ရရမရရ loading ကို ပိတ်မည်
+                        setLoading(false);
                     }
                 };
                 load();
@@ -275,18 +293,30 @@
                 document.body.className = dark ? 'bg-slate-950 text-slate-100 dark' : 'bg-slate-50 text-slate-900';
                 localStorage.setItem('la_dark', dark);
                 if (window.lucide) window.lucide.createIcons();
-            }, [dark, editCell, activeNum]);
+            }, [dark, editCell, activeNum, loading]);
 
-            const handleCellClick = (id) => {
-                if (selected.includes(id)) {
-                    setSelected([]);
-                } else {
-                    setSelected([id]);
+            // Long Press Logic - 500ms
+            const handleTouchStart = (id, y, r, num) => {
+                pressTimer.current = setTimeout(() => {
+                    setEditCell({ id, y, r, num: num || "" });
+                    if (navigator.vibrate) navigator.vibrate(40);
+                    pressTimer.current = null;
+                }, 500); 
+            };
+
+            const handleTouchEnd = () => {
+                if (pressTimer.current) {
+                    clearTimeout(pressTimer.current);
+                    pressTimer.current = null;
                 }
             };
 
-            const handleCellDoubleClick = (id, y, r, num) => {
-                setEditCell({ id, y, r, num: num || "" });
+            const handleCellClick = (id) => {
+                if (selected.includes(id)) {
+                    setSelected([]); 
+                } else {
+                    setSelected([id]); 
+                }
             };
 
             const saveEdit = (num, comm, color) => {
@@ -307,6 +337,17 @@
                 localStorage.setItem('la_data', JSON.stringify(newData));
                 setEditCell(null);
             };
+
+            if (loading && data.length === 0) {
+                return (
+                    <div className={`app-container flex items-center justify-center ${dark ? 'bg-slate-950' : 'bg-slate-50'}`}>
+                        <div className="text-center">
+                            <div className="spinner mx-auto mb-4"></div>
+                            <p className="text-blue-600 font-bold animate-pulse">အချက်အလက်များ ရယူနေပါသည်...</p>
+                        </div>
+                    </div>
+                );
+            }
 
             return (
                 <div className="app-container p-2 md:p-4">
@@ -388,7 +429,11 @@
                                                     key={y}
                                                     data-id={id}
                                                     onClick={() => handleCellClick(id)}
-                                                    onDoubleClick={() => handleCellDoubleClick(id, y, rIdx, num)}
+                                                    onMouseDown={() => handleTouchStart(id, y, rIdx, num)}
+                                                    onMouseUp={handleTouchEnd}
+                                                    onMouseLeave={handleTouchEnd}
+                                                    onTouchStart={() => handleTouchStart(id, y, rIdx, num)}
+                                                    onTouchEnd={handleTouchEnd}
                                                     className={`transition-all duration-200 cursor-pointer relative z-10 select-none ${isSelected ? 'highlight-selected' : ''}`}
                                                     style={{ 
                                                         backgroundColor: isSelected ? '#2563eb' : cellColor,
