@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="my">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lottery Analyzer</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- React & Babel for Browser -->
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        body { background-color: #020617; color: #e2e8f0; font-family: sans-serif; }
+        .scale-in-center { animation: scale-in-center 0.2s cubic-bezier(0.250, 0.460, 0.450, 0.940) both; }
+        @keyframes scale-in-center { 0% { transform: scale(0.9); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+        /* Hide scrollbar for Chrome, Safari and Opera */
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .sticky-col { position: sticky; left: 0; z-index: 10; background: #0f172a; border-right: 1px solid #334155; }
+    </style>
+</head>
+<body class="select-none">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useMemo } = React;
+        const API_URL = 'https://sheetdb.io/api/v1/x9azbgwzmy3a7';
+
+        const App = () => {
+            const [data, setData] = useState([]);
+            const [loading, setLoading] = useState(true);
+            const [selectedCells, setSelectedCells] = useState([]);
+            const [activeCell, setActiveCell] = useState(null);
+            const [cellStyles, setCellStyles] = useState({});
+            const [inputVal, setInputVal] = useState("");
+            
+            const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+            const [showPasswordInput, setShowPasswordInput] = useState(false);
+            const [password, setPassword] = useState("");
+            const [authError, setAuthError] = useState("");
+
+            useEffect(() => {
+                fetchData();
+            }, []);
+
+            const fetchData = async () => {
+                try {
+                    const response = await fetch(API_URL);
+                    const json = await response.json();
+                    setData(json);
+                } catch (err) {
+                    console.error("Fetch Error:", err);
+                } finally {
+                    setLoading(false);
+                }
+            };
+
+            const { organizedData, years } = useMemo(() => {
+                const yearsMap = {};
+                data.forEach((item) => {
+                    const date = new Date(item.date);
+                    const year = date.getFullYear();
+                    if (!yearsMap[year]) yearsMap[year] = Array(24).fill(null);
+                    
+                    const month = date.getMonth();
+                    const isSixteenth = date.getDate() >= 16;
+                    const roundIdx = month * 2 + (isSixteenth ? 1 : 0);
+                    
+                    if (roundIdx < 24) {
+                        yearsMap[year][roundIdx] = item.number;
+                    }
+                });
+
+                let sortedYears = Object.keys(yearsMap).sort((a, b) => a - b).map(Number);
+                const lastYear = sortedYears.length > 0 ? sortedYears[sortedYears.length - 1] : new Date().getFullYear();
+                const nextYear = lastYear + 1;
+                
+                if (!yearsMap[nextYear]) {
+                    yearsMap[nextYear] = Array(24).fill(null);
+                    sortedYears.push(nextYear); 
+                }
+                return { organizedData: yearsMap, years: sortedYears };
+            }, [data]);
+
+            const handleCellClick = (year, roundIdx, currentNum) => {
+                setActiveCell({ year, round: roundIdx, number: currentNum || "" });
+                setInputVal(currentNum || "");
+            };
+
+            const handleSaveData = () => {
+                if (!activeCell) return;
+                const newData = [...data];
+                const month = Math.floor(activeCell.round / 2);
+                const day = (activeCell.round % 2 === 0) ? 1 : 16;
+                const dateStr = `${activeCell.year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                
+                const existingIdx = newData.findIndex(d => d.date === dateStr);
+                if (existingIdx > -1) {
+                    newData[existingIdx].number = inputVal;
+                } else {
+                    newData.push({ date: dateStr, number: inputVal });
+                }
+                
+                setData(newData);
+                setActiveCell(null);
+            };
+
+            const applyColor = (color) => {
+                if (!activeCell) return;
+                const cellId = `${activeCell.year}-${activeCell.round}`;
+                setCellStyles(prev => ({ ...prev, [cellId]: color }));
+                
+                if (!selectedCells.find(c => c.id === cellId)) {
+                    setSelectedCells(prev => [...prev, { 
+                        id: cellId, 
+                        year: activeCell.year, 
+                        round: activeCell.round + 1, 
+                        number: inputVal, 
+                        color 
+                    }]);
+                }
+                setActiveCell(null);
+            };
+
+            const handleFinalClear = () => {
+                if (password === "arkarsoe") {
+                    setCellStyles({});
+                    setSelectedCells([]);
+                    setPassword("");
+                    setAuthError("");
+                    setShowPasswordInput(false);
+                } else {
+                    setAuthError("Password မှားယွင်းနေပါသည်။");
+                }
+            };
+
+            if (loading) return (
+                <div className="flex items-center justify-center h-screen bg-slate-950 text-white">
+                    <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-blue-500"></div>
+                </div>
+            );
+
+            return (
+                <div className="min-h-screen p-2 md:p-4 text-slate-200">
+                    <div className="sticky top-0 z-30 bg-slate-900/90 backdrop-blur-md border border-slate-700 rounded-2xl p-4 mb-4 shadow-xl">
+                        <div className="flex justify-between items-center mb-3">
+                            <h1 className="text-xl font-bold text-blue-400 flex items-center gap-2">
+                                <i data-lucide="calendar"></i> Lottery Analyzer
+                            </h1>
+                            <button 
+                                onClick={() => setShowDeleteConfirm(true)}
+                                className="p-2 hover:bg-red-500/20 text-red-400 rounded-lg transition-colors flex items-center gap-2 text-xs border border-red-500/30"
+                            >
+                                <i data-lucide="trash-2" style={{width: 16}}></i> အားလုံးဖျက်မည်
+                            </button>
+                        </div>
+
+                        <div className="flex flex-wrap gap-2 min-h-[50px] p-2 bg-slate-800/40 rounded-xl border border-slate-700/50 overflow-x-auto no-scrollbar">
+                            {selectedCells.length === 0 ? (
+                                <p className="text-slate-500 text-xs italic m-auto">အကွက်ကိုနှိပ်၍ မှတ်သားချက်များထည့်ပါ...</p>
+                            ) : (
+                                selectedCells.map((cell) => (
+                                    <div 
+                                        key={cell.id} 
+                                        className="flex items-center gap-2 px-3 py-1 rounded-full text-[10px] font-bold shadow-md border border-white/10 shrink-0"
+                                        style={{ backgroundColor: cell.color, color: '#fff' }}
+                                    >
+                                        <span>{cell.year} ({cell.round}) - {cell.number}</span>
+                                        <button onClick={() => setSelectedCells(prev => prev.filter(c => c.id !== cell.id))} className="hover:text-black">×</button>
+                                    </div>
+                                ))
+                            )}
+                        </div>
+                    </div>
+
+                    <div className="overflow-auto rounded-2xl border border-slate-800 bg-slate-900 shadow-2xl max-h-[75vh]">
+                        <table className="w-full text-center border-collapse text-[11px] md:text-sm">
+                            <thead>
+                                <tr className="bg-slate-800 text-slate-400 sticky top-0 z-20">
+                                    <th className="p-3 border border-slate-700 bg-slate-800 sticky left-0 z-30 min-w-[80px]">အကြိမ်ရေ</th>
+                                    {years.map(year => (
+                                        <th key={year} className="p-3 border border-slate-700 min-w-[70px] text-blue-300 font-bold bg-slate-800">
+                                            {year}
+                                        </th>
+                                    ))}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {Array.from({ length: 24 }).map((_, roundIdx) => (
+                                    <tr key={roundIdx} className="hover:bg-slate-800/30">
+                                        <td className="p-2 border border-slate-700 font-medium text-slate-400 bg-slate-900 sticky left-0 z-10">
+                                            <span className="text-xs">{roundIdx + 1}</span>
+                                            <div className="text-[8px] opacity-40">({roundIdx % 2 === 0 ? '၁' : '၁၆'} ရက်)</div>
+                                        </td>
+                                        {years.map(year => {
+                                            const num = organizedData[year][roundIdx];
+                                            const cellId = `${year}-${roundIdx}`;
+                                            const bgColor = cellStyles[cellId];
+                                            return (
+                                                <td
+                                                    key={year}
+                                                    onClick={() => handleCellClick(year, roundIdx, num)}
+                                                    className={`p-2 border border-slate-700 cursor-pointer transition-all relative
+                                                        ${!num ? 'bg-slate-950/40 text-slate-700 italic' : 'text-white'}
+                                                    `}
+                                                    style={{ backgroundColor: bgColor }}
+                                                >
+                                                    {num || '-'}
+                                                </td>
+                                            );
+                                        })}
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    {/* Modals are handled below */}
+                    {showDeleteConfirm && (
+                        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/90 backdrop-blur-md">
+                            <div className="bg-slate-900 border border-red-500/30 rounded-3xl p-8 w-full max-w-sm text-center shadow-2xl scale-in-center">
+                                <h2 className="text-xl font-bold text-white mb-2">ဖျက်ရန် သေချာပါသလား?</h2>
+                                <p className="text-slate-400 mb-6 text-sm">မှတ်သားထားသော data အားလုံး ပျောက်သွားပါမည်။</p>
+                                <div className="flex gap-3">
+                                    <button onClick={() => setShowDeleteConfirm(false)} className="flex-1 py-3 bg-slate-800 rounded-xl">မလုပ်တော့ပါ</button>
+                                    <button onClick={() => {setShowDeleteConfirm(false); setShowPasswordInput(true);}} className="flex-1 py-3 bg-red-600 text-white rounded-xl font-bold">သေချာသည်</button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {showPasswordInput && (
+                        <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/90 backdrop-blur-md">
+                            <div className="bg-slate-900 border border-blue-500/30 rounded-3xl p-8 w-full max-w-sm shadow-2xl">
+                                <h3 className="text-lg font-bold text-white mb-4">Password အတည်ပြုပါ</h3>
+                                <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Password" 
+                                    className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white mb-2" />
+                                {authError && <p className="text-red-500 text-xs mb-4">{authError}</p>}
+                                <div className="flex gap-3">
+                                    <button onClick={() => setShowPasswordInput(false)} className="flex-1 py-3 bg-slate-800 rounded-xl">ပိတ်မည်</button>
+                                    <button onClick={handleFinalClear} className="flex-1 py-3 bg-blue-600 text-white rounded-xl font-bold">Confirm</button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {activeCell && (
+                        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+                            <div className="bg-slate-800 border border-slate-600 rounded-3xl p-6 w-full max-w-sm shadow-2xl scale-in-center">
+                                <div className="flex justify-between items-center mb-6">
+                                    <div>
+                                        <h3 className="text-xl font-bold text-white">{activeCell.year} ခုနှစ်</h3>
+                                        <p className="text-slate-400 text-xs">အကြိမ်ရေ ({activeCell.round + 1})</p>
+                                    </div>
+                                    <button onClick={() => setActiveCell(null)} className="p-2 bg-slate-700 rounded-full">×</button>
+                                </div>
+                                <div className="mb-6 flex gap-2">
+                                    <input type="text" value={inputVal} onChange={(e) => setInputVal(e.target.value)} className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white text-lg" />
+                                    <button onClick={handleSaveData} className="bg-blue-600 px-4 rounded-xl">Save</button>
+                                </div>
+                                <div className="grid grid-cols-4 gap-2">
+                                    {['#ef4444', '#22c55e', '#3b82f6', '#eab308', '#a855f7', '#ec4899', '#f97316', '#64748b'].map(color => (
+                                        <button key={color} onClick={() => applyColor(color)} className="h-10 rounded-lg" style={{ backgroundColor: color }} />
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+
+        // Refresh icons after render
+        setTimeout(() => lucide.createIcons(), 500);
+    </script>
+</body>
+</html>
+
