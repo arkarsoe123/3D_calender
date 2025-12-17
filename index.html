@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Lottery Analyzer - Hybrid Storage</title>
+    <title>Lottery Analyzer - အာကာစိုး</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- React & Babel for Browser -->
@@ -17,7 +17,6 @@
         .scale-in-center { animation: scale-in-center 0.2s cubic-bezier(0.250, 0.460, 0.450, 0.940) both; }
         @keyframes scale-in-center { 0% { transform: scale(0.9); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
         .no-scrollbar::-webkit-scrollbar { display: none; }
-        .sticky-col { position: sticky; left: 0; z-index: 10; background: #0f172a; border-right: 1px solid #334155; }
         input[type="text"] { caret-color: #3b82f6; }
     </style>
 </head>
@@ -28,7 +27,6 @@
         const { useState, useEffect, useMemo } = React;
         const API_URL = 'https://sheetdb.io/api/v1/x9azbgwzmy3a7';
         const STORAGE_KEY = 'lottery_analyzer_data_v2';
-        const CORRECT_PASSWORD = "arkarsoe";
 
         const App = () => {
             const [data, setData] = useState([]);
@@ -37,12 +35,7 @@
             const [activeCell, setActiveCell] = useState(null);
             const [cellStyles, setCellStyles] = useState({});
             const [inputVal, setInputVal] = useState("");
-            
             const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-            const [showPasswordInput, setShowPasswordInput] = useState(false);
-            const [passwordAction, setPasswordAction] = useState(null);
-            const [password, setPassword] = useState("");
-            const [authError, setAuthError] = useState("");
 
             useEffect(() => {
                 initializeData();
@@ -97,11 +90,9 @@
                 if (sortedYears.length === 0) sortedYears = [currentYear];
                 
                 const lastYear = sortedYears[sortedYears.length - 1];
-                const nextYear = lastYear + 1;
-                
-                if (!yearsMap[nextYear]) {
-                    yearsMap[nextYear] = Array(24).fill(null);
-                    if (!sortedYears.includes(nextYear)) sortedYears.push(nextYear); 
+                if (!yearsMap[lastYear + 1]) {
+                    yearsMap[lastYear + 1] = Array(24).fill(null);
+                    if (!sortedYears.includes(lastYear + 1)) sortedYears.push(lastYear + 1); 
                 }
                 return { organizedData: yearsMap, years: sortedYears };
             }, [data]);
@@ -109,21 +100,6 @@
             const handleCellClick = (year, roundIdx, currentNum) => {
                 setActiveCell({ year, round: roundIdx, number: currentNum || "" });
                 setInputVal(currentNum || "");
-            };
-
-            const handleAuthSubmit = () => {
-                if (password === CORRECT_PASSWORD) {
-                    if (passwordAction === 'save') {
-                        executeSave();
-                    } else if (passwordAction === 'clear') {
-                        executeClearAll();
-                    }
-                    setPassword("");
-                    setAuthError("");
-                    setShowPasswordInput(false);
-                } else {
-                    setAuthError("Password မှားယွင်းနေပါသည်။");
-                }
             };
 
             const executeSave = () => {
@@ -145,11 +121,8 @@
                 setActiveCell(null);
             };
 
-            const executeClearAll = () => {
-                syncStorage([]);
-                setCellStyles({});
-                setSelectedCells([]);
-                setShowDeleteConfirm(false);
+            const executeReset = () => {
+                localStorage.removeItem(STORAGE_KEY);
                 window.location.reload();
             };
 
@@ -173,14 +146,14 @@
             if (loading) return (
                 <div className="flex flex-col items-center justify-center h-screen bg-slate-950 text-white">
                     <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-blue-500 mb-4"></div>
-                    <p className="text-slate-400 text-sm animate-pulse">Data များကို ရယူနေပါသည်...</p>
+                    <p className="text-slate-400 text-sm animate-pulse">အချက်အလက်များ ရယူနေပါသည်...</p>
                 </div>
             );
 
             return (
                 <div className="min-h-screen p-2 md:p-4 text-slate-200">
                     {/* Header Section */}
-                    <div className="sticky top-0 z-30 bg-slate-900/90 backdrop-blur-md border border-slate-700 rounded-2xl p-4 mb-4 shadow-xl">
+                    <div className="sticky top-0 z-30 bg-slate-900/95 backdrop-blur-md border border-slate-700 rounded-2xl p-4 mb-4 shadow-xl">
                         <div className="flex justify-between items-center mb-3">
                             <div className="flex flex-col">
                                 <h1 className="text-xl font-bold text-blue-400 flex items-center gap-2">
@@ -258,11 +231,6 @@
                         </table>
                     </div>
 
-                    {/* Footer Info */}
-                    <div className="mt-4 text-center">
-                         <p className="text-slate-600 text-[10px]">Hybrid Data Management System Loaded.</p>
-                    </div>
-
                     {/* Modals */}
                     {showDeleteConfirm && (
                         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/95 backdrop-blur-md">
@@ -270,32 +238,11 @@
                                 <div className="w-16 h-16 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
                                     <i data-lucide="alert-triangle" className="text-red-500 w-8 h-8"></i>
                                 </div>
-                                <h2 className="text-xl font-bold text-white mb-2">Reset လုပ်မည်</h2>
-                                <p className="text-slate-400 mb-6 text-sm">မှတ်သားထားသော data အားလုံးကို ဖျက်ပြီး မူလအခြေအနေသို့ ပြန်သွားပါမည်။</p>
+                                <h2 className="text-xl font-bold text-white mb-2">Data များ Reset လုပ်မည်</h2>
+                                <p className="text-slate-400 mb-6 text-sm">မှတ်သားထားသော အချက်အလက်အားလုံး ပျက်သွားပါမည်။</p>
                                 <div className="flex gap-3">
                                     <button onClick={() => setShowDeleteConfirm(false)} className="flex-1 py-3 bg-slate-800 rounded-xl hover:bg-slate-700 transition-colors">ပယ်ဖျက်မည်</button>
-                                    <button onClick={() => { setPasswordAction('clear'); setShowPasswordInput(true); }} className="flex-1 py-3 bg-red-600 text-white rounded-xl font-bold shadow-lg shadow-red-600/20">ဆက်လုပ်မည်</button>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-
-                    {showPasswordInput && (
-                        <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/95 backdrop-blur-md">
-                            <div className="bg-slate-900 border border-blue-500/30 rounded-3xl p-8 w-full max-w-sm shadow-2xl scale-in-center text-center">
-                                <h3 className="text-lg font-bold text-white mb-4">Password အတည်ပြုပါ</h3>
-                                <input 
-                                    type="password" 
-                                    autoFocus
-                                    value={password} 
-                                    onChange={(e) => setPassword(e.target.value)} 
-                                    placeholder="Password ရိုက်ထည့်ပါ" 
-                                    className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white mb-2 focus:border-blue-500 outline-none text-center tracking-widest" 
-                                />
-                                {authError && <p className="text-red-500 text-xs mb-4 animate-bounce">{authError}</p>}
-                                <div className="flex gap-3">
-                                    <button onClick={() => setShowPasswordInput(false)} className="flex-1 py-3 bg-slate-800 rounded-xl">ပိတ်မည်</button>
-                                    <button onClick={handleAuthSubmit} className="flex-1 py-3 bg-blue-600 text-white rounded-xl font-bold">အတည်ပြုသည်</button>
+                                    <button onClick={executeReset} className="flex-1 py-3 bg-red-600 text-white rounded-xl font-bold shadow-lg shadow-red-600/20">သေချာသည်</button>
                                 </div>
                             </div>
                         </div>
@@ -312,18 +259,19 @@
                                     <button onClick={() => setActiveCell(null)} className="p-2 bg-slate-700/50 hover:bg-slate-700 rounded-full transition-colors text-slate-300">×</button>
                                 </div>
                                 <div className="mb-6">
-                                    <label className="text-[10px] text-slate-500 block mb-1 ml-1 font-bold">ထွက်ဂဏန်း ပြင်ဆင်ရန်</label>
+                                    <label className="text-[10px] text-slate-500 block mb-1 ml-1 font-bold">ဂဏန်းပြင်ဆင်ရန်</label>
                                     <div className="flex gap-2">
                                         <input 
                                             type="text" 
                                             autoFocus
                                             value={inputVal} 
                                             onChange={(e) => setInputVal(e.target.value)} 
+                                            onKeyPress={(e) => e.key === 'Enter' && executeSave()}
                                             className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white text-lg font-mono focus:border-blue-500 outline-none" 
                                             placeholder="--"
                                         />
                                         <button 
-                                            onClick={() => { setPasswordAction('save'); setShowPasswordInput(true); }} 
+                                            onClick={executeSave} 
                                             className="bg-blue-600 hover:bg-blue-500 px-6 rounded-xl text-sm font-bold shadow-lg shadow-blue-600/20 transition-all"
                                         >
                                             Save
