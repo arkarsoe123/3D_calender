@@ -35,12 +35,40 @@
             margin-bottom: 10px;
         }
 
+        /* မူလ UX အတိုင်းထားပြီး 3D Styling သာထည့်ခြင်း */
         th, td {
             min-width: 65px; 
             height: 48px;     
-            border: 0.5px solid #e2e8f0;
             text-align: center;
             font-size: 14px;
+            position: relative;
+        }
+
+        /* 3D Cell Box Style */
+        .cell-box {
+            position: absolute;
+            inset: 3px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 6px;
+            transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+            box-shadow: 1px 1px 3px rgba(0,0,0,0.1), 
+                        inset 1px 1px 1px rgba(255,255,255,0.4);
+            border: 0.5px solid rgba(0,0,0,0.05);
+        }
+
+        /* နှိပ်လိုက်လျှင် ကြွတက်လာသော Animation */
+        .cell-box:active {
+            transform: scale(1.1) translateY(-4px);
+            box-shadow: 0 10px 15px rgba(0,0,0,0.15);
+            z-index: 50;
+        }
+
+        .dark .cell-box {
+            box-shadow: 2px 2px 5px rgba(0,0,0,0.4), 
+                        inset 1px 1px 0px rgba(255,255,255,0.05);
+            border-color: rgba(255,255,255,0.05);
         }
 
         @media (orientation: landscape) {
@@ -61,6 +89,7 @@
             top: 0;
             z-index: 50;
             background-color: inherit;
+            border-bottom: 1px solid #e2e8f0;
         }
 
         .sticky-col {
@@ -82,14 +111,7 @@
             background-color: inherit;
         }
 
-        .dark .sticky-col { border-color: #1e293b; }
-        .dark th, .dark td { border-color: #1e293b; }
-
-        .highlight-selected {
-            background-color: #2563eb !important;
-            color: white !important;
-            z-index: 20;
-        }
+        .dark .sticky-col, .dark thead th { border-color: #1e293b; }
 
         #path-svg {
             position: absolute;
@@ -143,7 +165,6 @@
         .color-btn:active { transform: scale(0.85); }
         .no-scrollbar::-webkit-scrollbar { display: none; }
 
-        /* Loading Spinner Animation */
         .spinner {
             width: 40px;
             height: 40px;
@@ -152,9 +173,7 @@
             border-radius: 50%;
             animation: spin 1s linear infinite;
         }
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
+        @keyframes spin { to { transform: rotate(360deg); } }
     </style>
 </head>
 <body class="bg-slate-50 text-slate-900 transition-colors duration-300">
@@ -215,7 +234,6 @@
                     } catch (e) {
                         console.error("Fetch error:", e);
                     } finally {
-                        // ဒေတာ ရရမရရ loading ကို ပိတ်မည်
                         setLoading(false);
                     }
                 };
@@ -235,11 +253,9 @@
                 }
                 let years = Object.keys(map).sort((a, b) => Number(a) - Number(b)).map(Number);
                 if (years.length === 0) years = [new Date().getFullYear()];
-                
                 const next = years[years.length - 1] + 1;
                 if (!map[next]) map[next] = Array(24).fill(null);
                 years.push(next);
-                
                 return { map, years };
             }, [data]);
 
@@ -295,7 +311,6 @@
                 if (window.lucide) window.lucide.createIcons();
             }, [dark, editCell, activeNum, loading]);
 
-            // Long Press Logic - 500ms
             const handleTouchStart = (id, y, r, num) => {
                 pressTimer.current = setTimeout(() => {
                     setEditCell({ id, y, r, num: num || "" });
@@ -312,11 +327,8 @@
             };
 
             const handleCellClick = (id) => {
-                if (selected.includes(id)) {
-                    setSelected([]); 
-                } else {
-                    setSelected([id]); 
-                }
+                if (selected.includes(id)) setSelected([]); 
+                else setSelected([id]); 
             };
 
             const saveEdit = (num, comm, color) => {
@@ -402,9 +414,9 @@
                         <table ref={tableRef}>
                             <thead>
                                 <tr className={dark ? 'bg-slate-900' : 'bg-slate-100'}>
-                                    <th className="sticky-corner sticky-col border-b border-r z-[60] text-blue-600">အကြိမ်</th>
+                                    <th className="sticky-corner sticky-col z-[60] text-blue-600">အကြိမ်</th>
                                     {organized.years.map(y => (
-                                        <th key={y} className={`border-b font-black text-blue-600 uppercase text-[10px] z-50 ${dark ? 'bg-slate-900' : 'bg-slate-100'}`}>
+                                        <th key={y} className="font-black text-blue-600 uppercase text-[10px]">
                                             {y}
                                         </th>
                                     ))}
@@ -413,7 +425,7 @@
                             <tbody>
                                 {Array.from({ length: 24 }).map((_, rIdx) => (
                                     <tr key={rIdx}>
-                                        <td className={`sticky-col border-r ${dark ? 'bg-slate-900' : 'bg-white'}`}>
+                                        <td className={`sticky-col ${dark ? 'bg-slate-900' : 'bg-white'}`}>
                                             <span className="text-sm font-black">{rIdx + 1}</span>
                                             <span className="block text-[8px] opacity-40">{rIdx % 2 === 0 ? '၁' : '၁၆'}</span>
                                         </td>
@@ -421,8 +433,8 @@
                                             const id = `${y}-${rIdx}`;
                                             const num = organized.map[y]?.[rIdx];
                                             const isSelected = selected.includes(id) || (activeNum && num === activeNum);
-                                            const cellColor = styles[id] || "";
-                                            const textColor = isSelected ? 'white' : getContrastYIQ(cellColor);
+                                            const cellColor = styles[id] || (dark ? "#1e293b" : "#ffffff");
+                                            const textColor = isSelected ? 'white' : getContrastYIQ(styles[id]);
 
                                             return (
                                                 <td
@@ -434,14 +446,18 @@
                                                     onMouseLeave={handleTouchEnd}
                                                     onTouchStart={() => handleTouchStart(id, y, rIdx, num)}
                                                     onTouchEnd={handleTouchEnd}
-                                                    className={`transition-all duration-200 cursor-pointer relative z-10 select-none ${isSelected ? 'highlight-selected' : ''}`}
-                                                    style={{ 
-                                                        backgroundColor: isSelected ? '#2563eb' : cellColor,
-                                                        color: textColor
-                                                    }}
                                                 >
-                                                    <span className="font-bold">{num || <span className="opacity-5">.</span>}</span>
-                                                    {comments[id] && <div className="comment-dot" style={{borderColor: cellColor || (dark ? '#0f172a' : 'white')}}></div>}
+                                                    <div 
+                                                        className="cell-box"
+                                                        style={{ 
+                                                            backgroundColor: isSelected ? '#2563eb' : cellColor,
+                                                            color: textColor,
+                                                            borderBottom: isSelected ? '2px solid #1e3a8a' : 'none'
+                                                        }}
+                                                    >
+                                                        <span className="font-bold">{num || <span className="opacity-5">.</span>}</span>
+                                                        {comments[id] && <div className="comment-dot" style={{borderColor: isSelected ? '#2563eb' : cellColor}}></div>}
+                                                    </div>
                                                 </td>
                                             );
                                         })}
