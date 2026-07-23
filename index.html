@@ -289,7 +289,7 @@
     <script type="text/babel">
         const { useState, useEffect, useMemo, useRef } = React;
         
-        // --- UPDATED: Use Local JSON instead of SheetDB ---
+        // --- Use Local JSON instead of SheetDB ---
         const DATA_URL = 'data.json'; 
 
         const VIBRANT_COLORS = [
@@ -363,7 +363,7 @@
             const [showStats, setShowStats] = useState(false);
             const [toast, setToast] = useState(null);
             
-            // --- NEW: Toolbar Visibility State ---
+            // --- Toolbar Visibility State ---
             const [isToolbarVisible, setIsToolbarVisible] = useState(true);
             
             const tableRef = useRef(null);
@@ -473,13 +473,13 @@
                 updateLines();
                 window.addEventListener('resize', updateLines);
                 return () => window.removeEventListener('resize', updateLines);
-            }, [activeNum, organized, zoom, isToolbarVisible]); // Added isToolbarVisible dependency
+            }, [activeNum, organized, zoom, isToolbarVisible]);
 
             useEffect(() => {
                 document.body.className = dark ? 'bg-slate-950 text-slate-100 dark' : 'bg-slate-50 text-slate-900';
                 localStorage.setItem('la_dark', dark);
                 if (window.lucide) window.lucide.createIcons();
-            }, [dark, selectedId, activeNum, loading, showStats, toast, isToolbarVisible]);
+            }, [dark, selectedId, activeNum, loading, showStats, toast, isToolbarVisible, data]);
 
             const saveQuickEdit = (id, num, comm, color) => {
                 if (!id) return;
@@ -500,6 +500,25 @@
                 localStorage.setItem('la_data_v2', JSON.stringify(newData));
                 
                 setToast("သိမ်းဆည်းပြီးပါပြီ");
+                setTimeout(() => setToast(null), 2000);
+            };
+
+            // --- JSON ဖိုင်အဖြစ် ဒေါင်းလုဒ်လုပ်မည့် Function အသစ် ---
+            const handleExportJSON = () => {
+                const jsonString = JSON.stringify(data, null, 2);
+                const blob = new Blob([jsonString], { type: "application/json" });
+                const url = URL.createObjectURL(blob);
+                
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'data.json';
+                document.body.appendChild(a);
+                a.click();
+                
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                
+                setToast("JSON ဖိုင် ဒေါင်းလုဒ်ဆွဲပြီးပါပြီ");
                 setTimeout(() => setToast(null), 2000);
             };
 
@@ -528,7 +547,12 @@
                             </div>
                         </div>
                         <div className="flex gap-2">
-                             {/* --- NEW: Show/Hide Toggle Button --- */}
+                            {/* --- Export JSON Button အသစ် --- */}
+                            <button onClick={handleExportJSON} title="JSON ဖိုင် ထုတ်ယူရန်" className="p-2 rounded-lg bg-emerald-50 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400">
+                                <i data-lucide="download" className="w-5 h-5"></i>
+                            </button>
+
+                             {/* Show/Hide Toggle Button */}
                              <button onClick={() => setIsToolbarVisible(!isToolbarVisible)} className={`p-2 rounded-lg transition-colors ${isToolbarVisible ? 'bg-blue-100 text-blue-600 dark:bg-blue-900' : 'bg-slate-100 dark:bg-slate-800'}`}>
                                 <i data-lucide={isToolbarVisible ? "panel-top-close" : "panel-top-open"} className="w-5 h-5"></i>
                             </button>
