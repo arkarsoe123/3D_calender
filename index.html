@@ -42,7 +42,7 @@
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             overflow: hidden;
             opacity: 1;
-            max-height: 200px; /* Adjust based on content */
+            max-height: 200px;
         }
         
         .toolbar-container.collapsed {
@@ -281,6 +281,15 @@
             animation: slideUp 0.3s ease-out;
         }
         @keyframes slideUp { from { transform: translate(-50%, 20px); opacity: 0; } to { transform: translate(-50%, 0); opacity: 1; } }
+        
+        /* AI Pulse Animation */
+        .ai-pulse {
+            animation: aiPulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+        @keyframes aiPulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: .5; }
+        }
     </style>
 </head>
 <body class="bg-slate-50 text-slate-900 transition-colors duration-300">
@@ -289,7 +298,6 @@
     <script type="text/babel">
         const { useState, useEffect, useMemo, useRef } = React;
         
-        // --- Use Local JSON instead of SheetDB ---
         const DATA_URL = 'data.json'; 
 
         const VIBRANT_COLORS = [
@@ -315,6 +323,7 @@
             </div>
         );
 
+        // --- Stats Modal ---
         const StatsModal = ({ data, onClose, dark }) => {
             const stats = useMemo(() => {
                 const counts = {};
@@ -350,6 +359,117 @@
             );
         };
 
+        // --- AI Prediction Modal ---
+        const AIModal = ({ data, onClose, dark }) => {
+            const [isAnalyzing, setIsAnalyzing] = useState(true);
+            const [results, setResults] = useState(null);
+
+            useEffect(() => {
+                // Simulate AI Thinking Delay
+                const timer = setTimeout(() => {
+                    const validData = data.filter(d => d.number && d.number.trim() !== "");
+                    
+                    if (validData.length === 0) {
+                        setResults({ error: "တွက်ချက်ရန် Data မရှိသေးပါ။" });
+                        setIsAnalyzing(false);
+                        return;
+                    }
+
+                    // 1. Hot Numbers (Most Frequent)
+                    const counts = {};
+                    validData.forEach(d => counts[d.number] = (counts[d.number] || 0) + 1);
+                    const hot = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 3).map(i => i[0]);
+
+                    // 2. Cold Numbers (Least Frequent / Longest absent)
+                    // We'll just take the least frequent numbers here
+                    const cold = Object.entries(counts).sort((a, b) => a[1] - b[1]).slice(0, 3).map(i => i[0]);
+
+                    // 3. AI Prediction (Pattern match mock up)
+                    // Combine recent trend averages and statistical probability
+                    const recents = validData.slice(-5).map(d => parseInt(d.number) || 0);
+                    const avg = recents.length > 0 ? Math.floor(recents.reduce((a, b) => a + b, 0) / recents.length) : 50;
+                    
+                    const predictions = [
+                        hot[0] || "00", // Mostly likely to repeat
+                        String(Math.abs(avg + 2) % 100).padStart(2, '0'), // Trend variance
+                        String(Math.floor(Math.random() * 100)).padStart(2, '0') // Wildcard probability
+                    ];
+
+                    setResults({ 
+                        hot, 
+                        cold, 
+                        predictions: [...new Set(predictions)] // unique items
+                    });
+                    setIsAnalyzing(false);
+                }, 1500);
+
+                return () => clearTimeout(timer);
+            }, [data]);
+
+            return (
+                <div className="modal-overlay" onClick={onClose}>
+                    <div className="modal-content" onClick={e => e.stopPropagation()}>
+                        <div className="flex justify-between items-center mb-4">
+                            <h3 className={`font-bold text-lg flex items-center gap-2 ${dark ? 'text-white' : 'text-slate-800'}`}>
+                                <i data-lucide="sparkles" className="w-5 h-5 text-purple-500"></i>
+                                AI တွက်ချက်မှု
+                            </h3>
+                            <button onClick={onClose} className="p-1 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800">
+                                <i data-lucide="x" className="w-5 h-5"></i>
+                            </button>
+                        </div>
+
+                        {isAnalyzing ? (
+                            <div className="flex flex-col items-center justify-center py-8">
+                                <i data-lucide="brain" className="w-12 h-12 text-purple-500 ai-pulse mb-4"></i>
+                                <p className={`text-sm font-bold ai-pulse ${dark ? 'text-slate-400' : 'text-slate-500'}`}>Data များကို တွက်ချက်နေပါသည်...</p>
+                            </div>
+                        ) : results.error ? (
+                            <div className="text-center py-4 text-red-500 font-bold">{results.error}</div>
+                        ) : (
+                            <div className="space-y-4">
+                                {/* Predictions */}
+                                <div className={`p-4 rounded-xl border ${dark ? 'bg-purple-900/20 border-purple-800' : 'bg-purple-50 border-purple-200'}`}>
+                                    <div className="text-xs font-bold text-purple-500 mb-2 uppercase tracking-wider">AI အကြံပြုဂဏန်းများ</div>
+                                    <div className="flex justify-around">
+                                        {results.predictions.map((num, idx) => (
+                                            <div key={idx} className={`w-14 h-14 rounded-full flex items-center justify-center text-xl font-black shadow-md ${dark ? 'bg-slate-800 text-white' : 'bg-white text-slate-800'}`}>
+                                                {num}
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {/* Hot Numbers */}
+                                <div>
+                                    <div className={`text-xs font-bold mb-2 flex items-center gap-1 ${dark ? 'text-red-400' : 'text-red-500'}`}>
+                                        <i data-lucide="flame" className="w-4 h-4"></i> အထွက်အများဆုံး (Hot)
+                                    </div>
+                                    <div className="flex gap-2">
+                                        {results.hot.map((num, idx) => (
+                                            <div key={idx} className={`flex-1 py-2 text-center rounded-lg font-bold ${dark ? 'bg-slate-800 text-slate-300' : 'bg-slate-100 text-slate-700'}`}>{num}</div>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {/* Cold Numbers */}
+                                <div>
+                                    <div className={`text-xs font-bold mb-2 flex items-center gap-1 ${dark ? 'text-blue-400' : 'text-blue-500'}`}>
+                                        <i data-lucide="snowflake" className="w-4 h-4"></i> အထွက်အနည်းဆုံး (Cold)
+                                    </div>
+                                    <div className="flex gap-2">
+                                        {results.cold.map((num, idx) => (
+                                            <div key={idx} className={`flex-1 py-2 text-center rounded-lg font-bold ${dark ? 'bg-slate-800 text-slate-300' : 'bg-slate-100 text-slate-700'}`}>{num}</div>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            );
+        };
+
         const App = () => {
             const [data, setData] = useState([]);
             const [loading, setLoading] = useState(true);
@@ -361,15 +481,14 @@
             const [lineCoords, setLineCoords] = useState([]);
             const [zoom, setZoom] = useState(1);
             const [showStats, setShowStats] = useState(false);
+            const [showAI, setShowAI] = useState(false);
             const [toast, setToast] = useState(null);
             
-            // --- Toolbar Visibility State ---
             const [isToolbarVisible, setIsToolbarVisible] = useState(true);
             
             const tableRef = useRef(null);
             const initialDist = useRef(null);
 
-            // Fetch Data from JSON File
             useEffect(() => {
                 const load = async () => {
                     const cached = localStorage.getItem('la_data_v2');
@@ -394,7 +513,6 @@
                 load();
             }, []);
 
-            // Organize Data
             const organized = useMemo(() => {
                 const map = {};
                 data.forEach(item => {
@@ -431,7 +549,6 @@
                 return matches;
             }, [activeNum, organized]);
 
-            // Custom Zoom Handler
             const handleTouchMove = (e) => {
                 if (e.touches.length === 2) {
                     const dist = Math.hypot(
@@ -479,7 +596,7 @@
                 document.body.className = dark ? 'bg-slate-950 text-slate-100 dark' : 'bg-slate-50 text-slate-900';
                 localStorage.setItem('la_dark', dark);
                 if (window.lucide) window.lucide.createIcons();
-            }, [dark, selectedId, activeNum, loading, showStats, toast, isToolbarVisible, data]);
+            }, [dark, selectedId, activeNum, loading, showStats, showAI, toast, isToolbarVisible, data]);
 
             const saveQuickEdit = (id, num, comm, color) => {
                 if (!id) return;
@@ -503,7 +620,6 @@
                 setTimeout(() => setToast(null), 2000);
             };
 
-            // --- JSON ဖိုင်အဖြစ် ဒေါင်းလုဒ်လုပ်မည့် Function အသစ် ---
             const handleExportJSON = () => {
                 const jsonString = JSON.stringify(data, null, 2);
                 const blob = new Blob([jsonString], { type: "application/json" });
@@ -547,12 +663,15 @@
                             </div>
                         </div>
                         <div className="flex gap-2">
-                            {/* --- Export JSON Button အသစ် --- */}
+                            {/* AI Predict Button */}
+                            <button onClick={() => setShowAI(true)} title="AI တွက်ချက်မှု" className="p-2 rounded-lg bg-purple-50 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400">
+                                <i data-lucide="sparkles" className="w-5 h-5"></i>
+                            </button>
+
                             <button onClick={handleExportJSON} title="JSON ဖိုင် ထုတ်ယူရန်" className="p-2 rounded-lg bg-emerald-50 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400">
                                 <i data-lucide="download" className="w-5 h-5"></i>
                             </button>
 
-                             {/* Show/Hide Toggle Button */}
                              <button onClick={() => setIsToolbarVisible(!isToolbarVisible)} className={`p-2 rounded-lg transition-colors ${isToolbarVisible ? 'bg-blue-100 text-blue-600 dark:bg-blue-900' : 'bg-slate-100 dark:bg-slate-800'}`}>
                                 <i data-lucide={isToolbarVisible ? "panel-top-close" : "panel-top-open"} className="w-5 h-5"></i>
                             </button>
@@ -566,7 +685,7 @@
                         </div>
                     </div>
 
-                    {/* Controls & Ribbon (Collapsible) */}
+                    {/* Controls & Ribbon */}
                     <div className={`toolbar-container glass ${dark ? 'bg-slate-900/50' : 'bg-white/50'} ${isToolbarVisible ? '' : 'collapsed'}`}>
                          <div className="px-4 pt-2 flex justify-between items-center">
                              <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full border shadow-sm w-full max-w-[200px] ${dark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
@@ -700,6 +819,7 @@
 
                     {/* Components */}
                     {showStats && <StatsModal data={data} dark={dark} onClose={() => setShowStats(false)} />}
+                    {showAI && <AIModal data={data} dark={dark} onClose={() => setShowAI(false)} />}
                     {toast && <Toast msg={toast} />}
                 </div>
             );
@@ -710,3 +830,5 @@
     </script>
 </body>
 </html>
+
+```
