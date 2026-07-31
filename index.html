@@ -1,3 +1,4 @@
+```html
 <!DOCTYPE html>
 <html lang="my">
 <head>
@@ -329,12 +330,13 @@
                 const counts = {};
                 data.forEach(item => {
                     if (item.number) {
-                        counts[item.number] = (counts[item.number] || 0) + 1;
+                        const numStr = String(item.number).padStart(2, '0');
+                        counts[numStr] = (counts[numStr] || 0) + 1;
                     }
                 });
                 return Object.entries(counts)
                     .sort(([,a], [,b]) => b - a)
-                    .slice(0, 20); // Top 20
+                    .slice(0, 20); 
             }, [data]);
 
             return (
@@ -365,46 +367,61 @@
             const [results, setResults] = useState(null);
 
             useEffect(() => {
-                // Simulate AI Thinking Delay
                 const timer = setTimeout(() => {
-                    const validData = data.filter(d => d.number && d.number.trim() !== "");
-                    
-                    if (validData.length === 0) {
-                        setResults({ error: "တွက်ချက်ရန် Data မရှိသေးပါ။" });
-                        setIsAnalyzing(false);
-                        return;
+                    try {
+                        // Data type error မှားတာကို ကာကွယ်ရန် String ပြောင်းစစ်ခြင်း (Crash ဖြေရှင်းချက်)
+                        const validData = data.filter(d => d && d.number != null && String(d.number).trim() !== "");
+                        
+                        if (validData.length === 0) {
+                            setResults({ error: "တွက်ချက်ရန် Data မရှိသေးပါ။" });
+                            setIsAnalyzing(false);
+                            return;
+                        }
+
+                        // 1. Hot Numbers
+                        const counts = {};
+                        validData.forEach(d => {
+                            const numStr = String(d.number).padStart(2, '0');
+                            counts[numStr] = (counts[numStr] || 0) + 1;
+                        });
+                        
+                        const sortedData = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+                        const hot = sortedData.slice(0, 3).map(i => i[0]);
+
+                        // 2. Cold Numbers 
+                        const cold = sortedData.slice(-3).reverse().map(i => i[0]);
+
+                        // 3. AI Prediction 
+                        const recents = validData.slice(-5).map(d => parseInt(String(d.number), 10) || 0);
+                        const avg = recents.length > 0 ? Math.floor(recents.reduce((a, b) => a + b, 0) / recents.length) : 50;
+                        
+                        const predictions = [
+                            hot[0] || "00", 
+                            String(Math.abs(avg + 2) % 100).padStart(2, '0'), 
+                            String(Math.floor(Math.random() * 100)).padStart(2, '0')
+                        ];
+
+                        setResults({ 
+                            hot, 
+                            cold: cold.length > 0 ? cold : ["-", "-", "-"], 
+                            predictions: [...new Set(predictions)] 
+                        });
+                    } catch (error) {
+                        setResults({ error: "တွက်ချက်မှု အမှားအယွင်းဖြစ်နေပါသည်။" });
+                        console.error("AI Error:", error);
                     }
-
-                    // 1. Hot Numbers (Most Frequent)
-                    const counts = {};
-                    validData.forEach(d => counts[d.number] = (counts[d.number] || 0) + 1);
-                    const hot = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 3).map(i => i[0]);
-
-                    // 2. Cold Numbers (Least Frequent / Longest absent)
-                    // We'll just take the least frequent numbers here
-                    const cold = Object.entries(counts).sort((a, b) => a[1] - b[1]).slice(0, 3).map(i => i[0]);
-
-                    // 3. AI Prediction (Pattern match mock up)
-                    // Combine recent trend averages and statistical probability
-                    const recents = validData.slice(-5).map(d => parseInt(d.number) || 0);
-                    const avg = recents.length > 0 ? Math.floor(recents.reduce((a, b) => a + b, 0) / recents.length) : 50;
-                    
-                    const predictions = [
-                        hot[0] || "00", // Mostly likely to repeat
-                        String(Math.abs(avg + 2) % 100).padStart(2, '0'), // Trend variance
-                        String(Math.floor(Math.random() * 100)).padStart(2, '0') // Wildcard probability
-                    ];
-
-                    setResults({ 
-                        hot, 
-                        cold, 
-                        predictions: [...new Set(predictions)] // unique items
-                    });
                     setIsAnalyzing(false);
                 }, 1500);
 
                 return () => clearTimeout(timer);
             }, [data]);
+
+            // အိုင်ကွန်များ ပြန်လည်ရေးဆွဲရန်
+            useEffect(() => {
+                if (!isAnalyzing && window.lucide) {
+                    window.lucide.createIcons();
+                }
+            }, [isAnalyzing]);
 
             return (
                 <div className="modal-overlay" onClick={onClose}>
@@ -424,9 +441,9 @@
                                 <i data-lucide="brain" className="w-12 h-12 text-purple-500 ai-pulse mb-4"></i>
                                 <p className={`text-sm font-bold ai-pulse ${dark ? 'text-slate-400' : 'text-slate-500'}`}>Data များကို တွက်ချက်နေပါသည်...</p>
                             </div>
-                        ) : results.error ? (
+                        ) : results?.error ? (
                             <div className="text-center py-4 text-red-500 font-bold">{results.error}</div>
-                        ) : (
+                        ) : results ? (
                             <div className="space-y-4">
                                 {/* Predictions */}
                                 <div className={`p-4 rounded-xl border ${dark ? 'bg-purple-900/20 border-purple-800' : 'bg-purple-50 border-purple-200'}`}>
@@ -464,7 +481,7 @@
                                     </div>
                                 </div>
                             </div>
-                        )}
+                        ) : null}
                     </div>
                 </div>
             );
@@ -611,8 +628,8 @@
                 const newData = [...data];
                 const dateStr = `${y}-${String(Math.floor(r/2)+1).padStart(2,'0')}-${Number(r)%2===0?'01':'16'}`;
                 const idx = newData.findIndex(d => d.date === dateStr);
-                if (idx > -1) newData[idx].number = num;
-                else newData.push({ date: dateStr, number: num });
+                if (idx > -1) newData[idx].number = String(num); // Ensure it's string
+                else newData.push({ date: dateStr, number: String(num) });
                 setData(newData);
                 localStorage.setItem('la_data_v2', JSON.stringify(newData));
                 
@@ -830,5 +847,6 @@
     </script>
 </body>
 </html>
+
 
 ```
