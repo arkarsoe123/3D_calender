@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>အာကာစိုး (Pro Version)</title>
+    <title>အာကာစိုး (Pro Version - Fullscreen UI)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
@@ -21,13 +21,13 @@
         }
 
         .glass {
-            background: rgba(255, 255, 255, 0.9);
+            background: rgba(255, 255, 255, 0.92);
             backdrop-filter: blur(10px);
             -webkit-backdrop-filter: blur(10px);
         }
 
         .dark .glass {
-            background: rgba(15, 23, 42, 0.9);
+            background: rgba(15, 23, 42, 0.92);
         }
 
         .app-container {
@@ -35,93 +35,73 @@
             display: flex;
             flex-direction: column;
             overflow: hidden;
+            position: relative;
         }
 
-        /* Toolbar Transition */
-        .toolbar-container {
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            overflow: hidden;
-            opacity: 1;
-            max-height: 200px;
-        }
-        
-        .toolbar-container.collapsed {
-            max-height: 0;
+        /* Side Menu Backdrop & Drawer */
+        .drawer-backdrop {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(4px);
+            z-index: 100;
             opacity: 0;
-            padding-top: 0;
-            padding-bottom: 0;
-            margin: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+        .drawer-backdrop.open {
+            opacity: 1;
+            pointer-events: auto;
         }
 
-        /* Excel Style Ribbon Menu */
-        .excel-ribbon {
-            border-bottom: 1px solid #e2e8f0;
-            padding: 4px 8px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            z-index: 90;
-            overflow-x: auto;
-            flex-shrink: 0;
-            transition: all 0.3s;
+        .drawer-content {
+            position: fixed;
+            top: 0;
+            bottom: 0;
+            left: 0;
+            width: 280px;
+            z-index: 110;
+            transform: translateX(-100%);
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 20px 0 25px -5px rgba(0, 0, 0, 0.1);
+        }
+        .drawer-content.open {
+            transform: translateX(0);
         }
 
-        .dark .excel-ribbon { border-color: #334155; }
-
-        .ribbon-group {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            padding: 2px 8px;
-            border-right: 1px solid #f1f5f9;
+        /* Floating Bottom Editor */
+        .bottom-editor {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            z-index: 80;
+            transform: translateY(100%);
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 -10px 25px -5px rgba(0, 0, 0, 0.1);
+        }
+        .bottom-editor.open {
+            transform: translateY(0);
         }
 
-        .dark .ribbon-group { border-color: #1e293b; }
-
-        .ribbon-input {
-            width: 50px;
-            height: 32px;
-            border-radius: 8px;
-            border: 1px solid #cbd5e1;
-            text-align: center;
-            font-weight: bold;
-            font-size: 16px;
-            outline: none;
-            transition: all 0.2s;
-        }
-        .ribbon-input:focus { border-color: #3b82f6; ring: 2px solid #bfdbfe; }
-
-        .dark .ribbon-input { background: #1e293b; border-color: #475569; color: white; }
-
-        .ribbon-comm {
-            width: 100px;
-            height: 32px;
-            border-radius: 8px;
-            border: 1px solid #cbd5e1;
-            padding: 0 8px;
-            font-size: 12px;
-            outline: none;
-        }
-
-        .dark .ribbon-comm { background: #1e293b; border-color: #475569; color: white; }
-
+        /* Color mini grid */
         .color-mini-grid {
             display: grid;
             grid-template-columns: repeat(7, 1fr);
-            gap: 3px;
+            gap: 4px;
         }
 
         .mini-color-btn {
-            width: 18px;
-            height: 18px;
-            border-radius: 4px;
+            width: 24px;
+            height: 24px;
+            border-radius: 6px;
             border: 1px solid rgba(0,0,0,0.1);
             cursor: pointer;
             transition: transform 0.1s;
         }
         .mini-color-btn:active { transform: scale(0.9); }
 
-        /* Independent Table Zooming Container */
+        /* Table Viewport */
         .table-viewport {
             position: relative;
             flex: 1;
@@ -136,7 +116,6 @@
             width: max-content;
         }
 
-        /* Table Styles */
         th, td {
             min-width: 54px; 
             height: 44px;     
@@ -259,7 +238,6 @@
         }
         @keyframes spin { to { transform: rotate(360deg); } }
 
-        /* Modal & Toast */
         .modal-overlay {
             position: fixed; inset: 0; background: rgba(0,0,0,0.5);
             z-index: 200; display: flex; align-items: center; justify-content: center;
@@ -274,7 +252,7 @@
         .dark .modal-content { background: #0f172a; border: 1px solid #1e293b; }
 
         .toast {
-            position: fixed; bottom: 40px; left: 50%; transform: translateX(-50%);
+            position: fixed; bottom: 110px; left: 50%; transform: translateX(-50%);
             background: #10b981; color: white; padding: 8px 16px; border-radius: 20px;
             font-size: 12px; font-weight: bold; z-index: 200;
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
@@ -322,6 +300,110 @@
             </div>
         );
 
+        // --- Side Menu Drawer Component ---
+        const SideMenu = ({ isOpen, onClose, dark, setDark, onOpenAI, onOpenPattern, onOpenStats, isHeatmap, setIsHeatmap, onExport, onImportClick }) => {
+            return (
+                <>
+                    <div className={`drawer-backdrop ${isOpen ? 'open' : ''}`} onClick={onClose}></div>
+                    <div className={`drawer-content ${isOpen ? 'open' : ''} ${dark ? 'bg-slate-900 text-slate-100' : 'bg-white text-slate-800'} flex flex-col justify-between p-4 border-r ${dark ? 'border-slate-800' : 'border-slate-200'}`}>
+                        <div>
+                            {/* Developer Profile Card */}
+                            <div className={`p-4 rounded-2xl mb-6 border ${dark ? 'bg-slate-800/80 border-slate-700' : 'bg-blue-50/80 border-blue-100'}`}>
+                                <div className="flex items-center gap-3 mb-3">
+                                    <div className="w-12 h-12 bg-blue-600 rounded-xl flex items-center justify-center text-white font-black text-lg shadow-lg shadow-blue-500/30">
+                                        AS
+                                    </div>
+                                    <div>
+                                        <h3 className="font-black text-base leading-tight">Arkarsoe</h3>
+                                        <span className="text-[11px] text-blue-500 font-bold">Developer & Creator</span>
+                                    </div>
+                                </div>
+                                <div className="space-y-1.5 text-xs opacity-80 border-t pt-2.5 border-current/10">
+                                    <div className="flex items-center gap-2">
+                                        <i data-lucide="mail" className="w-3.5 h-3.5 text-blue-500"></i>
+                                        <span>arkarsoe@example.com</span>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <i data-lucide="phone" className="w-3.5 h-3.5 text-blue-500"></i>
+                                        <span>+95 9 123 456 789</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Menu Buttons */}
+                            <div className="space-y-1">
+                                <button 
+                                    onClick={() => { onOpenAI(); onClose(); }}
+                                    className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-bold text-sm hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-purple-600 dark:text-purple-400"
+                                >
+                                    <i data-lucide="sparkles" className="w-5 h-5"></i>
+                                    <span>AI တွက်ချက်မှု</span>
+                                </button>
+
+                                <button 
+                                    onClick={() => { onOpenPattern(); onClose(); }}
+                                    className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-bold text-sm hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-indigo-600 dark:text-indigo-400"
+                                >
+                                    <i data-lucide="pie-chart" className="w-5 h-5"></i>
+                                    <span>ထိပ်စီး/နောက်ပိတ် သုံးသပ်ချက်</span>
+                                </button>
+
+                                <button 
+                                    onClick={() => { onOpenStats(); onClose(); }}
+                                    className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-bold text-sm hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-blue-600 dark:text-blue-400"
+                                >
+                                    <i data-lucide="bar-chart-2" className="w-5 h-5"></i>
+                                    <span>အထွက်အများဆုံး (Top 20)</span>
+                                </button>
+
+                                <button 
+                                    onClick={() => { setIsHeatmap(!isHeatmap); onClose(); }}
+                                    className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl font-bold text-sm transition-colors ${isHeatmap ? 'bg-orange-500 text-white' : 'hover:bg-slate-100 dark:hover:bg-slate-800 text-orange-600 dark:text-orange-400'}`}
+                                >
+                                    <div className="flex items-center gap-3">
+                                        <i data-lucide="flame" className="w-5 h-5"></i>
+                                        <span>Heatmap Mode</span>
+                                    </div>
+                                    <span className="text-xs px-1.5 py-0.5 rounded bg-current/10">{isHeatmap ? 'ON' : 'OFF'}</span>
+                                </button>
+
+                                <hr className="my-2 border-slate-200 dark:border-slate-800" />
+
+                                <button 
+                                    onClick={() => { onImportClick(); onClose(); }}
+                                    className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-bold text-sm hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                                >
+                                    <i data-lucide="upload" className="w-5 h-5 text-slate-500"></i>
+                                    <span>JSON ဖိုင်တင်ရန်</span>
+                                </button>
+
+                                <button 
+                                    onClick={() => { onExport(); onClose(); }}
+                                    className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-bold text-sm hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                                >
+                                    <i data-lucide="download" className="w-5 h-5 text-emerald-500"></i>
+                                    <span>JSON ဖိုင် ထုတ်ယူရန်</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Dark/Light Mode Footer Toggle */}
+                        <div className="pt-4 border-t border-slate-200 dark:border-slate-800">
+                            <button 
+                                onClick={() => setDark(!dark)}
+                                className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl font-bold text-sm bg-slate-100 dark:bg-slate-800"
+                            >
+                                <div className="flex items-center gap-3">
+                                    <i data-lucide={dark ? "sun" : "moon"} className="w-5 h-5 text-amber-500"></i>
+                                    <span>{dark ? 'Light Mode' : 'Dark Mode'}</span>
+                                </div>
+                            </button>
+                        </div>
+                    </div>
+                </>
+            );
+        };
+
         // --- Stats Modal ---
         const StatsModal = ({ data, onClose, dark }) => {
             const stats = useMemo(() => {
@@ -359,7 +441,7 @@
             );
         };
 
-        // --- AI Pattern Analysis Modal ---
+        // --- Pattern Modal ---
         const PatternModal = ({ data, onClose, dark }) => {
             const analysis = useMemo(() => {
                 const headCounts = Array(10).fill(0);
@@ -470,7 +552,7 @@
                         setResults({ error: "တွက်ချက်မှု အမှားအယွင်းဖြစ်နေပါသည်။" });
                     }
                     setIsAnalyzing(false);
-                }, 1200);
+                }, 1000);
 
                 return () => clearTimeout(timer);
             }, [data]);
@@ -542,6 +624,7 @@
             );
         };
 
+        // --- Main App Component ---
         const App = () => {
             const [data, setData] = useState([]);
             const [loading, setLoading] = useState(true);
@@ -552,14 +635,14 @@
             const [dark, setDark] = useState(false);
             const [lineCoords, setLineCoords] = useState([]);
             const [zoom, setZoom] = useState(1);
+            
             const [showStats, setShowStats] = useState(false);
             const [showPattern, setShowPattern] = useState(false);
             const [showAI, setShowAI] = useState(false);
             const [isHeatmap, setIsHeatmap] = useState(false);
             const [showDoublesOnly, setShowDoublesOnly] = useState(false);
+            const [isMenuOpen, setIsMenuOpen] = useState(false);
             const [toast, setToast] = useState(null);
-            
-            const [isToolbarVisible, setIsToolbarVisible] = useState(true);
             
             const tableRef = useRef(null);
             const initialDist = useRef(null);
@@ -588,7 +671,6 @@
                 load();
             }, []);
 
-            // Heatmap calculation
             const frequencyMap = useMemo(() => {
                 const freq = {};
                 data.forEach(item => {
@@ -677,13 +759,13 @@
                 updateLines();
                 window.addEventListener('resize', updateLines);
                 return () => window.removeEventListener('resize', updateLines);
-            }, [activeNum, organized, zoom, isToolbarVisible]);
+            }, [activeNum, organized, zoom]);
 
             useEffect(() => {
                 document.body.className = dark ? 'bg-slate-950 text-slate-100 dark' : 'bg-slate-50 text-slate-900';
                 localStorage.setItem('la_dark', dark);
                 if (window.lucide) window.lucide.createIcons();
-            }, [dark, selectedId, activeNum, loading, showStats, showAI, showPattern, isHeatmap, showDoublesOnly, toast, isToolbarVisible, data]);
+            }, [dark, selectedId, activeNum, loading, showStats, showAI, showPattern, isHeatmap, showDoublesOnly, isMenuOpen, toast, data]);
 
             const saveQuickEdit = (id, num, comm, color) => {
                 if (!id) return;
@@ -704,23 +786,20 @@
                 localStorage.setItem('la_data_v2', JSON.stringify(newData));
                 
                 setToast("သိမ်းဆည်းပြီးပါပြီ");
-                setTimeout(() => setToast(null), 2000);
+                setTimeout(() => setToast(null), 1500);
             };
 
             const handleExportJSON = () => {
                 const jsonString = JSON.stringify(data, null, 2);
                 const blob = new Blob([jsonString], { type: "application/json" });
                 const url = URL.createObjectURL(blob);
-                
                 const a = document.createElement('a');
                 a.href = url;
                 a.download = 'data.json';
                 document.body.appendChild(a);
                 a.click();
-                
                 document.body.removeChild(a);
                 URL.revokeObjectURL(url);
-                
                 setToast("JSON ဖိုင် ဒေါင်းလုဒ်ဆွဲပြီးပါပြီ");
                 setTimeout(() => setToast(null), 2000);
             };
@@ -759,128 +838,51 @@
 
             return (
                 <div className="app-container" onTouchMove={handleTouchMove} onTouchEnd={handleTouchEnd}>
-                    {/* Header */}
-                    <div className={`px-4 py-3 flex justify-between items-center flex-shrink-0 glass z-50 border-b ${dark ? 'border-slate-800' : 'border-slate-200'}`}>
-                        <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white font-black shadow-lg shadow-blue-500/30">
-                                KS
-                            </div>
-                            <div>
-                                <h1 className="text-base font-black leading-none">အာကာစိုး</h1>
-                                <span className="text-[10px] text-slate-500 font-bold">Smart Record</span>
-                            </div>
+                    {/* Compact Top Header */}
+                    <div className={`px-4 py-2.5 flex justify-between items-center flex-shrink-0 glass z-50 border-b ${dark ? 'border-slate-800' : 'border-slate-200'}`}>
+                        <div className="flex items-center gap-2">
+                            {/* Hamburger Menu Trigger */}
+                            <button 
+                                onClick={() => setIsMenuOpen(true)}
+                                className="p-2 -ml-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300"
+                            >
+                                <i data-lucide="menu" className="w-5 h-5"></i>
+                            </button>
+                            
+                            <h1 className="text-base font-black leading-none text-blue-600 dark:text-blue-400">အာကာစိုး</h1>
                         </div>
-                        <div className="flex gap-1.5 overflow-x-auto">
-                            {/* Import File Button */}
-                            <input type="file" ref={fileInputRef} accept=".json" onChange={handleImportJSON} className="hidden" />
-                            <button onClick={() => fileInputRef.current?.click()} title="JSON ဖိုင်တင်ရန်" className="p-2 rounded-lg bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-                                <i data-lucide="upload" className="w-5 h-5"></i>
-                            </button>
 
-                            {/* Export JSON Button */}
-                            <button onClick={handleExportJSON} title="JSON ဖိုင် ထုတ်ယူရန်" className="p-2 rounded-lg bg-emerald-50 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400">
-                                <i data-lucide="download" className="w-5 h-5"></i>
-                            </button>
-
-                            {/* Heatmap Toggle Button */}
-                            <button onClick={() => setIsHeatmap(!isHeatmap)} title="Heatmap Mode" className={`p-2 rounded-lg ${isHeatmap ? 'bg-orange-500 text-white' : 'bg-orange-50 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400'}`}>
-                                <i data-lucide="flame" className="w-5 h-5"></i>
-                            </button>
-
-                            {/* Pattern Analysis Button */}
-                            <button onClick={() => setShowPattern(true)} title="ထိပ်စီး/နောက်ပိတ် သုံးသပ်ချက်" className="p-2 rounded-lg bg-indigo-50 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400">
-                                <i data-lucide="pie-chart" className="w-5 h-5"></i>
-                            </button>
-
-                            {/* AI Predict Button */}
-                            <button onClick={() => setShowAI(true)} title="AI တွက်ချက်မှု" className="p-2 rounded-lg bg-purple-50 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400">
-                                <i data-lucide="sparkles" className="w-5 h-5"></i>
-                            </button>
-
-                             <button onClick={() => setIsToolbarVisible(!isToolbarVisible)} className={`p-2 rounded-lg transition-colors ${isToolbarVisible ? 'bg-blue-100 text-blue-600 dark:bg-blue-900' : 'bg-slate-100 dark:bg-slate-800'}`}>
-                                <i data-lucide={isToolbarVisible ? "panel-top-close" : "panel-top-open"} className="w-5 h-5"></i>
-                            </button>
-
-                            <button onClick={() => setShowStats(true)} className="p-2 rounded-lg bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400">
-                                <i data-lucide="bar-chart-2" className="w-5 h-5"></i>
-                            </button>
-                            <button onClick={() => setDark(!dark)} className="p-2 rounded-lg bg-slate-100 dark:bg-slate-800 transition-colors">
-                                <i data-lucide={dark ? "sun" : "moon"} className="w-5 h-5"></i>
-                            </button>
-                        </div>
-                    </div>
-
-                    {/* Controls & Ribbon */}
-                    <div className={`toolbar-container glass ${dark ? 'bg-slate-900/50' : 'bg-white/50'} ${isToolbarVisible ? '' : 'collapsed'}`}>
-                         <div className="px-4 pt-2 flex justify-between items-center gap-2">
-                             <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full border shadow-sm w-full max-w-[180px] ${dark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
-                                <i data-lucide="search" className="w-4 h-4 text-slate-400"></i>
+                        {/* Search & Quick Controls */}
+                        <div className="flex items-center gap-2">
+                            <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full border shadow-sm ${dark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
+                                <i data-lucide="search" className="w-3.5 h-3.5 text-slate-400"></i>
                                 <input 
-                                    type="number" placeholder="ဂဏန်းရှာရန်..." 
-                                    className="bg-transparent outline-none w-full font-bold text-sm"
+                                    type="number" placeholder="ရှာရန်..." 
+                                    className="bg-transparent outline-none w-16 font-bold text-xs"
                                     value={search} onChange={e => setSearch(e.target.value)}
                                 />
-                                {search && <button onClick={() => setSearch("")}><i data-lucide="x-circle" className="w-4 h-4 text-slate-400"></i></button>}
+                                {search && <button onClick={() => setSearch("")}><i data-lucide="x-circle" className="w-3.5 h-3.5 text-slate-400"></i></button>}
                             </div>
 
-                            {/* Double Digits Filter Toggle */}
+                            {/* Doubles Only Filter */}
                             <button 
                                 onClick={() => setShowDoublesOnly(!showDoublesOnly)}
-                                className={`px-2.5 py-1.5 rounded-lg text-xs font-bold border transition-colors flex items-center gap-1 ${showDoublesOnly ? 'bg-red-500 text-white border-red-500' : 'bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700'}`}
+                                className={`px-2 py-1 rounded-lg text-xs font-bold border transition-colors flex items-center gap-1 ${showDoublesOnly ? 'bg-red-500 text-white border-red-500' : 'bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700'}`}
                             >
-                                <i data-lucide="copy" className="w-3.5 h-3.5"></i>
-                                အပူးများ
+                                <span>အပူး</span>
                             </button>
-
-                            <div className="flex gap-1">
-                                <button onClick={() => setZoom(1)} className="p-1.5 rounded bg-slate-100 dark:bg-slate-800 text-xs font-bold">Reset</button>
-                                <button onClick={() => setZoom(prev => Math.min(2.5, prev + 0.1))} className="p-1.5 rounded bg-slate-100 dark:bg-slate-800"><i data-lucide="plus" className="w-4 h-4"></i></button>
-                            </div>
-                        </div>
-
-                        <div className="excel-ribbon no-scrollbar mt-1">
-                            <div className="ribbon-group">
-                                <input 
-                                    className="ribbon-input" placeholder="--"
-                                    value={selectedId ? (organized.map[selectedId.split('-')[0]]?.[selectedId.split('-')[1]] || "") : ""}
-                                    onChange={(e) => saveQuickEdit(selectedId, e.target.value, comments[selectedId] || "", styles[selectedId] || "")}
-                                    disabled={!selectedId}
-                                />
-                            </div>
-                            <div className="ribbon-group">
-                                <input 
-                                    className="ribbon-comm" placeholder="မှတ်ချက်..."
-                                    value={selectedId ? (comments[selectedId] || "") : ""}
-                                    onChange={(e) => saveQuickEdit(selectedId, organized.map[selectedId.split('-')[0]]?.[selectedId.split('-')[1]] || "", e.target.value, styles[selectedId] || "")}
-                                    disabled={!selectedId}
-                                />
-                            </div>
-                            <div className="ribbon-group !border-none">
-                                <div className="color-mini-grid">
-                                    {VIBRANT_COLORS.map(c => (
-                                        <button 
-                                            key={c} onClick={() => saveQuickEdit(selectedId, organized.map[selectedId.split('-')[0]]?.[selectedId.split('-')[1]] || "", comments[selectedId] || "", c)}
-                                            className="mini-color-btn shadow-sm" style={{ background: c }} disabled={!selectedId}
-                                        ></button>
-                                    ))}
-                                    <button 
-                                        onClick={() => saveQuickEdit(selectedId, organized.map[selectedId.split('-')[0]]?.[selectedId.split('-')[1]] || "", comments[selectedId] || "", "")}
-                                        className={`mini-color-btn flex items-center justify-center border ${dark ? 'bg-slate-700 border-slate-600' : 'bg-slate-50 border-slate-300'}`} disabled={!selectedId}
-                                    ><i data-lucide="eraser" className="w-2.5 h-2.5 opacity-50"></i></button>
-                                </div>
-                            </div>
                         </div>
                     </div>
 
                     {/* Path Summary Chips */}
                     {activeNum && pathSummary && pathSummary.length > 0 && (
-                        <div className={`px-4 py-2 flex items-center gap-3 overflow-x-auto no-scrollbar flex-shrink-0 border-b ${dark ? 'bg-slate-900 border-slate-800' : 'bg-slate-50 border-slate-200'}`}>
-                            <div className="text-xl font-black text-amber-500 drop-shadow-sm flex-shrink-0">{activeNum}</div>
-                            <div className="h-6 w-[1px] bg-slate-300 dark:bg-slate-700"></div>
-                            <div className="flex gap-1.5">
+                        <div className={`px-4 py-1.5 flex items-center gap-2 overflow-x-auto no-scrollbar flex-shrink-0 border-b ${dark ? 'bg-slate-900/60 border-slate-800' : 'bg-slate-100/60 border-slate-200'}`}>
+                            <div className="text-sm font-black text-amber-500 flex-shrink-0">{activeNum}</div>
+                            <div className="h-4 w-[1px] bg-slate-300 dark:bg-slate-700"></div>
+                            <div className="flex gap-1">
                                 {pathSummary.map((m, idx) => (
-                                    <div key={idx} className={`whitespace-nowrap px-2 py-0.5 rounded-md text-[10px] font-bold border flex flex-col items-center leading-none justify-center ${dark ? 'bg-slate-800 border-slate-700 text-slate-300' : 'bg-white border-slate-200 text-slate-600 shadow-sm'}`}>
-                                        <span className="opacity-50 text-[8px]">{m.year}</span>
+                                    <div key={idx} className={`whitespace-nowrap px-1.5 py-0.5 rounded text-[10px] font-bold border flex items-center gap-1 ${dark ? 'bg-slate-800 border-slate-700 text-slate-300' : 'bg-white border-slate-200 text-slate-600'}`}>
+                                        <span className="opacity-50">{m.year}</span>
                                         <span>Rd-{m.round}</span>
                                     </div>
                                 ))}
@@ -888,9 +890,9 @@
                         </div>
                     )}
 
-                    {/* Main Table Area */}
+                    {/* 90% Screen Table Viewport */}
                     <div className={`table-viewport no-scrollbar ${dark ? 'bg-slate-950' : 'bg-slate-50'}`}>
-                        <div className="zoom-wrapper p-4" style={{ transform: `scale(${zoom})` }}>
+                        <div className="zoom-wrapper p-3" style={{ transform: `scale(${zoom})` }}>
                             <svg id="path-svg" width={tableRef.current?.scrollWidth || 0} height={tableRef.current?.scrollHeight || 0}>
                                 {lineCoords.length > 1 && (
                                     <path className="connection-line" d={`M ${lineCoords[0].x} ${lineCoords[0].y} ${lineCoords.slice(1).map(c => `L ${c.x} ${c.y}`).join(' ')}`} />
@@ -923,21 +925,14 @@
                                                 const isHighlighted = (activeNum && num === activeNum && num !== "");
                                                 const isDouble = numStr.length === 2 && numStr[0] === numStr[1];
 
-                                                // Color Logic
                                                 let cellBg = styles[id];
-                                                
-                                                // Heatmap Logic
                                                 if (isHeatmap && numStr) {
                                                     const count = frequencyMap[numStr] || 0;
                                                     const opacity = Math.min(1, count / 8);
                                                     cellBg = `rgba(239, 68, 68, ${Math.max(0.15, opacity)})`;
                                                 }
-
                                                 if (!cellBg) cellBg = dark ? "#1e293b" : "#ffffff";
-                                                
-                                                if (showDoublesOnly && isDouble) {
-                                                    cellBg = "#ef4444";
-                                                }
+                                                if (showDoublesOnly && isDouble) cellBg = "#ef4444";
 
                                                 const textColor = (isFocused || isHighlighted || (showDoublesOnly && isDouble)) ? '#ffffff' : getContrastYIQ(cellBg);
                                                 const finalBg = (isFocused || isHighlighted) ? '#3b82f6' : cellBg;
@@ -959,15 +954,77 @@
                         </div>
                     </div>
 
-                    {/* Footer Info */}
-                    <div className="bg-white dark:bg-slate-900 border-t dark:border-slate-800 text-[10px] px-4 py-2 flex justify-between font-bold flex-shrink-0 text-slate-500">
-                        <div className="flex gap-4">
-                            <span>ရွေးချယ်ထားသည်: <span className="text-blue-600">{selectedId ? `${selectedId.split('-')[0]} (Rd ${Number(selectedId.split('-')[1])+1})` : '-'}</span></span>
+                    {/* Floating Bottom Editor Bar (Appears only when cell selected) */}
+                    <div className={`bottom-editor glass ${selectedId ? 'open' : ''} ${dark ? 'border-t border-slate-800' : 'border-t border-slate-200'} p-3`}>
+                        <div className="flex items-center justify-between gap-3 max-w-md mx-auto">
+                            {/* Selected Cell Tag */}
+                            <div className="flex flex-col">
+                                <span className="text-[10px] text-slate-400 font-bold">ရွေးချယ်ထားသည်</span>
+                                <span className="text-xs font-black text-blue-600">
+                                    {selectedId ? `${selectedId.split('-')[0]} (Rd ${Number(selectedId.split('-')[1])+1})` : ''}
+                                </span>
+                            </div>
+
+                            {/* Inputs */}
+                            <input 
+                                className={`w-14 h-9 rounded-xl border text-center font-bold text-base outline-none ${dark ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-300'}`}
+                                placeholder="--"
+                                value={selectedId ? (organized.map[selectedId.split('-')[0]]?.[selectedId.split('-')[1]] || "") : ""}
+                                onChange={(e) => saveQuickEdit(selectedId, e.target.value, comments[selectedId] || "", styles[selectedId] || "")}
+                            />
+
+                            <input 
+                                className={`flex-1 h-9 rounded-xl border px-3 text-xs outline-none ${dark ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-300'}`}
+                                placeholder="မှတ်ချက်..."
+                                value={selectedId ? (comments[selectedId] || "") : ""}
+                                onChange={(e) => saveQuickEdit(selectedId, organized.map[selectedId.split('-')[0]]?.[selectedId.split('-')[1]] || "", e.target.value, styles[selectedId] || "")}
+                            />
+
+                            {/* Mini Colors */}
+                            <div className="color-mini-grid">
+                                {VIBRANT_COLORS.slice(0, 6).map(c => (
+                                    <button 
+                                        key={c} onClick={() => saveQuickEdit(selectedId, organized.map[selectedId.split('-')[0]]?.[selectedId.split('-')[1]] || "", comments[selectedId] || "", c)}
+                                        className="mini-color-btn" style={{ background: c }}
+                                    ></button>
+                                ))}
+                                <button 
+                                    onClick={() => saveQuickEdit(selectedId, organized.map[selectedId.split('-')[0]]?.[selectedId.split('-')[1]] || "", comments[selectedId] || "", "")}
+                                    className={`mini-color-btn flex items-center justify-center border ${dark ? 'bg-slate-700 border-slate-600' : 'bg-slate-50 border-slate-300'}`}
+                                >
+                                    <i data-lucide="eraser" className="w-3 h-3 opacity-60"></i>
+                                </button>
+                            </div>
+
+                            {/* Deselect / Close Bar */}
+                            <button 
+                                onClick={() => setSelectedId(null)}
+                                className="p-2 rounded-xl hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-500"
+                            >
+                                <i data-lucide="x" className="w-5 h-5"></i>
+                            </button>
                         </div>
-                        <span>ZOOM: {Math.round(zoom * 100)}%</span>
                     </div>
 
-                    {/* Modals */}
+                    {/* Hidden Input for JSON Import */}
+                    <input type="file" ref={fileInputRef} accept=".json" onChange={handleImportJSON} className="hidden" />
+
+                    {/* Side Menu Drawer Component */}
+                    <SideMenu 
+                        isOpen={isMenuOpen}
+                        onClose={() => setIsMenuOpen(false)}
+                        dark={dark}
+                        setDark={setDark}
+                        onOpenAI={() => setShowAI(true)}
+                        onOpenPattern={() => setShowPattern(true)}
+                        onOpenStats={() => setShowStats(true)}
+                        isHeatmap={isHeatmap}
+                        setIsHeatmap={setIsHeatmap}
+                        onExport={handleExportJSON}
+                        onImportClick={() => fileInputRef.current?.click()}
+                    />
+
+                    {/* Modals & Toast */}
                     {showStats && <StatsModal data={data} dark={dark} onClose={() => setShowStats(false)} />}
                     {showPattern && <PatternModal data={data} dark={dark} onClose={() => setShowPattern(false)} />}
                     {showAI && <AIModal data={data} dark={dark} onClose={() => setShowAI(false)} />}
